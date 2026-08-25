@@ -84,16 +84,23 @@
           <div class="table-shell">
             <div class="chart-header">
               <div>
-                <p class="eyebrow">Yearly rollup</p>
-                <h2>Projection table</h2>
+                <p class="eyebrow" id="tableEyebrow">Yearly rollup</p>
+                <h2 id="tableTitle">Projection table</h2>
               </div>
-              <button id="downloadButton" type="button">Download CSV</button>
+              <div class="table-actions">
+                <select id="tableFrequency" aria-label="Table view">
+                  <option value="yearly">Yearly</option>
+                  <option value="quarterly">Quarterly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+                <button id="downloadButton" type="button">Download CSV</button>
+              </div>
             </div>
             <div class="table-wrap">
               <table>
                 <thead>
                   <tr>
-                    <th>Year</th>
+                    <th id="periodHeader">Year</th>
                     <th>Contributions</th>
                     <th>Dividend Income</th>
                     <th>Capital Gains</th>

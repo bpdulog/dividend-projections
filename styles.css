@@ -344,6 +344,11 @@ select {
   color: #14100a;
 }
 
+.table-actions {
+  display: flex;
+  gap: 10px;
+}
+
 canvas {
   display: block;
   width: 100%;
@@ -449,6 +454,11 @@ tbody tr:hover {
   .control input[type="number"],
   select,
   #downloadButton {
+    width: 100%;
+  }
+
+  .table-actions {
+    display: grid;
     width: 100%;
   }
 }

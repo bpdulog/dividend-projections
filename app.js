@@ -4,6 +4,7 @@ const DEFAULTS = {
   mode: "monthly",
   autoSave: true,
   chartMetric: "ending",
+  tableFrequency: "yearly",
   monthly: {
     initialAmount: 45000,
     annualDividendRate: 4.75,
@@ -41,6 +42,7 @@ const CONTROL_DEFS = {
 
 const state = loadState();
 let latestProjection = [];
+let latestTableRows = [];
 
 const controlsEl = document.querySelector("#controls");
 const rowsEl = document.querySelector("#projectionRows");
@@ -100,7 +102,7 @@ function getActiveConfig() {
 }
 
 function project(config) {
-  const rows = [];
+  const yearlyRows = [];
   const periodRows = [];
   const totalPeriods = config.years * config.periodsPerYear;
   const dividendRate = Math.pow(1 + config.annualDividendRate, 1 / config.periodsPerYear) - 1;
@@ -118,18 +120,60 @@ function project(config) {
   }
 
   for (let year = 1; year <= config.years; year += 1) {
-    const start = (year - 1) * config.periodsPerYear;
-    const slice = periodRows.slice(start, start + config.periodsPerYear);
-    rows.push({
-      year,
-      contributions: sum(slice, "contribution"),
-      dividendIncome: sum(slice, "dividend"),
-      capitalGains: sum(slice, "capitalGain"),
-      endingCapital: slice.at(-1).endingCapital
-    });
+    yearlyRows.push(rollupPeriodRows(periodRows, year, config.periodsPerYear, "yearly"));
   }
 
-  return rows;
+  return { periodRows, yearlyRows };
+}
+
+function rollupPeriodRows(periodRows, index, periodsPerGroup, frequency) {
+  const start = (index - 1) * periodsPerGroup;
+  const slice = periodRows.slice(start, start + periodsPerGroup);
+  const firstPeriod = slice[0].period;
+  const year = Math.ceil(firstPeriod / 12);
+
+  return {
+    index,
+    year,
+    label: makeRowLabel(frequency, firstPeriod, index),
+    contributions: sum(slice, "contribution"),
+    dividendIncome: sum(slice, "dividend"),
+    capitalGains: sum(slice, "capitalGain"),
+    endingCapital: slice.at(-1).endingCapital
+  };
+}
+
+function makeRowLabel(frequency, firstPeriod, index) {
+  if (frequency === "monthly") return `Month ${firstPeriod}`;
+  if (frequency === "quarterly") return `Q${((index - 1) % 4) + 1} Year ${Math.ceil(index / 4)}`;
+  return `Year ${index}`;
+}
+
+function getTableRows(periodRows, config) {
+  if (state.tableFrequency === "monthly") {
+    if (config.periodsPerYear !== 12) return [];
+    return periodRows.map((row) => ({
+      index: row.period,
+      year: Math.ceil(row.period / 12),
+      label: `Month ${row.period}`,
+      contributions: row.contribution,
+      dividendIncome: row.dividend,
+      capitalGains: row.capitalGain,
+      endingCapital: row.endingCapital
+    }));
+  }
+
+  if (state.tableFrequency === "quarterly") {
+    const periodsPerQuarter = config.periodsPerYear === 12 ? 3 : 1;
+    const totalQuarters = config.years * 4;
+    return Array.from({ length: totalQuarters }, (_, index) =>
+      rollupPeriodRows(periodRows, index + 1, periodsPerQuarter, "quarterly")
+    );
+  }
+
+  return Array.from({ length: config.years }, (_, index) =>
+    rollupPeriodRows(periodRows, index + 1, config.periodsPerYear, "yearly")
+  );
 }
 
 function sum(rows, key) {
@@ -165,7 +209,9 @@ function formatScaleValue(value, type) {
 
 function render() {
   const config = getActiveConfig();
-  latestProjection = project(config);
+  const projection = project(config);
+  latestProjection = projection.yearlyRows;
+  latestTableRows = getTableRows(projection.periodRows, config);
   const final = latestProjection.at(-1);
   const totalContributions = sum(latestProjection, "contributions");
   const totalDividends = sum(latestProjection, "dividendIncome");
@@ -175,19 +221,35 @@ function render() {
   document.querySelector("#finalDividend").textContent = currency.format(final.dividendIncome);
   document.querySelector("#totalContributions").textContent = currency.format(totalContributions);
   document.querySelector("#totalReturn").textContent = currency.format(totalDividends + totalGains);
+  renderTableLabels();
 
-  rowsEl.innerHTML = latestProjection.map((row) => `
+  rowsEl.innerHTML = latestTableRows.length ? latestTableRows.map((row) => `
     <tr>
-      <td>Year ${row.year}</td>
+      <td>${row.label}</td>
       <td>${moneyPrecise.format(row.contributions)}</td>
       <td>${moneyPrecise.format(row.dividendIncome)}</td>
       <td>${moneyPrecise.format(row.capitalGains)}</td>
       <td>${moneyPrecise.format(row.endingCapital)}</td>
     </tr>
-  `).join("");
+  `).join("") : `
+    <tr>
+      <td colspan="5">Monthly detail is available in Monthly mode.</td>
+    </tr>
+  `;
 
   drawChart();
   if (state.autoSave) saveState();
+}
+
+function renderTableLabels() {
+  const labels = {
+    yearly: ["Yearly rollup", "Year"],
+    quarterly: ["Quarterly rollup", "Quarter"],
+    monthly: ["Monthly detail", "Month"]
+  };
+  const [eyebrow, period] = labels[state.tableFrequency];
+  document.querySelector("#tableEyebrow").textContent = eyebrow;
+  document.querySelector("#periodHeader").textContent = period;
 }
 
 function drawChart() {
@@ -285,6 +347,11 @@ function syncControl(key, value) {
 
 function switchMode(mode) {
   state.mode = mode;
+  updateTableFrequencyOptions();
+  if (mode === "quarterly" && state.tableFrequency === "monthly") {
+    state.tableFrequency = "quarterly";
+    document.querySelector("#tableFrequency").value = state.tableFrequency;
+  }
   for (const tab of document.querySelectorAll(".mode-tab")) {
     const active = tab.dataset.mode === mode;
     tab.classList.toggle("active", active);
@@ -294,10 +361,16 @@ function switchMode(mode) {
   render();
 }
 
+function updateTableFrequencyOptions() {
+  const monthlyOption = document.querySelector('#tableFrequency option[value="monthly"]');
+  monthlyOption.disabled = state.mode === "quarterly";
+}
+
 function downloadCsv() {
-  const header = ["Year", "Contributions", "Dividend Income", "Capital Gains", "Ending Capital"];
-  const lines = latestProjection.map((row) => [
-    row.year,
+  const periodHeader = document.querySelector("#periodHeader").textContent;
+  const header = [periodHeader, "Contributions", "Dividend Income", "Capital Gains", "Ending Capital"];
+  const lines = latestTableRows.map((row) => [
+    row.label,
     row.contributions.toFixed(2),
     row.dividendIncome.toFixed(2),
     row.capitalGains.toFixed(2),
@@ -307,7 +380,7 @@ function downloadCsv() {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = `${state.mode}-dividend-projection.csv`;
+  link.download = `${state.mode}-${state.tableFrequency}-dividend-projection.csv`;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -337,9 +410,14 @@ document.querySelector("#chartMetric").addEventListener("change", (event) => {
   state.chartMetric = event.target.value;
   render();
 });
+document.querySelector("#tableFrequency").addEventListener("change", (event) => {
+  state.tableFrequency = event.target.value;
+  render();
+});
 document.querySelector("#downloadButton").addEventListener("click", downloadCsv);
 window.addEventListener("resize", drawChart);
 
 document.querySelector("#autoSave").checked = state.autoSave;
 document.querySelector("#chartMetric").value = state.chartMetric;
+document.querySelector("#tableFrequency").value = state.tableFrequency;
 switchMode(state.mode);
