@@ -250,6 +250,11 @@ function renderTableLabels() {
   const [eyebrow, period] = labels[state.tableFrequency];
   document.querySelector("#tableEyebrow").textContent = eyebrow;
   document.querySelector("#periodHeader").textContent = period;
+  for (const tab of document.querySelectorAll(".table-view-tab")) {
+    const active = tab.dataset.frequency === state.tableFrequency;
+    tab.classList.toggle("active", active);
+    tab.setAttribute("aria-selected", String(active));
+  }
 }
 
 function drawChart() {
@@ -363,7 +368,15 @@ function switchMode(mode) {
 
 function updateTableFrequencyOptions() {
   const monthlyOption = document.querySelector('#tableFrequency option[value="monthly"]');
+  const monthlyTab = document.querySelector('.table-view-tab[data-frequency="monthly"]');
   monthlyOption.disabled = state.mode === "quarterly";
+  monthlyTab.disabled = state.mode === "quarterly";
+}
+
+function switchTableFrequency(frequency) {
+  state.tableFrequency = frequency;
+  document.querySelector("#tableFrequency").value = frequency;
+  render();
 }
 
 function downloadCsv() {
@@ -411,8 +424,10 @@ document.querySelector("#chartMetric").addEventListener("change", (event) => {
   render();
 });
 document.querySelector("#tableFrequency").addEventListener("change", (event) => {
-  state.tableFrequency = event.target.value;
-  render();
+  switchTableFrequency(event.target.value);
+});
+document.querySelectorAll(".table-view-tab").forEach((tab) => {
+  tab.addEventListener("click", () => switchTableFrequency(tab.dataset.frequency));
 });
 document.querySelector("#downloadButton").addEventListener("click", downloadCsv);
 window.addEventListener("resize", drawChart);

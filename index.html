@@ -88,7 +88,12 @@
                 <h2 id="tableTitle">Projection table</h2>
               </div>
               <div class="table-actions">
-                <select id="tableFrequency" aria-label="Table view">
+                <div class="table-view-tabs" role="tablist" aria-label="Table view">
+                  <button class="table-view-tab active" type="button" data-frequency="yearly" role="tab" aria-selected="true">Yearly</button>
+                  <button class="table-view-tab" type="button" data-frequency="quarterly" role="tab" aria-selected="false">Quarterly</button>
+                  <button class="table-view-tab" type="button" data-frequency="monthly" role="tab" aria-selected="false">Monthly</button>
+                </div>
+                <select class="visually-hidden" id="tableFrequency" aria-label="Table view">
                   <option value="yearly">Yearly</option>
                   <option value="quarterly">Quarterly</option>
                   <option value="monthly">Monthly</option>

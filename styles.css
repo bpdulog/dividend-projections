@@ -349,6 +349,43 @@ select {
   gap: 10px;
 }
 
+.table-view-tabs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(86px, 1fr));
+  gap: 5px;
+  padding: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.table-view-tab {
+  min-height: 38px;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.table-view-tab.active {
+  background: linear-gradient(135deg, #f1e2b8, #b98d36);
+  color: #14100a;
+}
+
+.table-view-tab:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 canvas {
   display: block;
   width: 100%;
@@ -460,5 +497,9 @@ tbody tr:hover {
   .table-actions {
     display: grid;
     width: 100%;
+  }
+
+  .table-view-tabs {
+    grid-template-columns: 1fr;
   }
 }
