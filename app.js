@@ -259,9 +259,10 @@ function renderTableLabels() {
 
 function drawChart() {
   const rect = chart.getBoundingClientRect();
+  if (!rect.width || !rect.height) return;
   const scale = window.devicePixelRatio || 1;
-  chart.width = Math.max(640, Math.floor(rect.width * scale));
-  chart.height = Math.max(320, Math.floor(rect.height * scale));
+  chart.width = Math.max(1, Math.floor(rect.width * scale));
+  chart.height = Math.max(1, Math.floor(rect.height * scale));
   ctx.setTransform(scale, 0, 0, scale, 0, 0);
 
   const width = chart.width / scale;
